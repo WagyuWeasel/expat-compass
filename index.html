@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expat Compass</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEGps1G4fBm-QVOht_Q5qeVr7Vu-7fQmE&libraries=places"></script>
+</head>
+<body>
+  <div id="time-bar">
+    <div id="local-time">📍 Detecting...</div>
+    <div id="home-time">🏠 Select home country</div>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="filters">
+    <button class="filter active" data-type="all">All</button>
+    <button class="filter" data-type="hospital">🏥 Help</button>
+    <button class="filter" data-type="grocery">🛒 Daily</button>
+    <button class="filter" data-type="sim">📶 Connect</button>
+    <button class="filter" data-type="restaurant">🍽️ Eat</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
