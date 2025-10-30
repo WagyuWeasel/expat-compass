@@ -1,0 +1,52 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#time-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: #1a1a1a;
+  color: white;
+  padding: 12px;
+  font-size: 14px;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+}
+
+#map {
+  height: 100vh;
+  margin-top: 50px;
+}
+
+#filters {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: white;
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+  border-top: 1px solid #eee;
+  z-index: 1000;
+}
+
+.filter {
+  background: none;
+  border: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.filter.active {
+  background: #4a6cf7;
+  color: white;
+}
