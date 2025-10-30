@@ -1,156 +1,109 @@
 let map;
+let markers = [];
 let currentCountryCode = null;
 let homeCountryCode = localStorage.getItem('homeCountry') || 'US';
 
-// Emergency numbers by country (ISO 3166-1 alpha-2)
 const emergencyNumbers = {
-  TH: { police: '191', ambulance: '1669', fire: '199' },
-  PT: { police: '112', ambulance: '112', fire: '112' },
-  MX: { police: '911', ambulance: '911', fire: '911' },
-  US: { police: '911', ambulance: '911', fire: '911' },
-  DE: { police: '110', ambulance: '112', fire: '112' },
-  FR: { police: '17', ambulance: '15', fire: '18', universal: '112' },
-  // Add more as needed
+  TH: { police: '191', ambulance: '1669' },
+  PT: { police: '112', ambulance: '112' },
+  MX: { police: '911', ambulance: '911' },
+  US: { police: '911', ambulance: '911' },
+  DE: { police: '110', ambulance: '112' },
+  FR: { police: '17', ambulance: '15' },
+  GB: { police: '999', ambulance: '999' }
 };
 
-// Home country flags (emoji by ISO code)
 const countryFlags = {
   US: '🇺🇸', TH: '🇹🇭', PT: '🇵🇹', MX: '🇲🇽', DE: '🇩🇪', FR: '🇫🇷', GB: '🇬🇧', CA: '🇨🇦', AU: '🇦🇺'
 };
 
+const tzMap = {
+  US: 'America/New_York', GB: 'Europe/London', TH: 'Asia/Bangkok',
+  PT: 'Europe/Lisbon', MX: 'America/Mexico_City', DE: 'Europe/Berlin',
+  FR: 'Europe/Paris', CA: 'America/Toronto', AU: 'Australia/Sydney'
+};
+
 function initMap() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const userLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-        
-        map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 14,
-          center: userLocation,
-          styles: [
-            { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-            { elementType: "labels.icon", stylers: [{ visibility: "off" }] }
-          ]
-        });
+  const fallback = { lat: 38.7223, lng: -9.1393 };
+  const center = fallback;
 
-        // Reverse geocode to get country
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: userLocation }, (results, status) => {
-          if (status === "OK" && results[0]) {
-            const country = results[0].address_components.find(comp => 
-              comp.types.includes("country")
-            );
-            if (country) {
-              currentCountryCode = country.short_name;
-              updateUI();
-              loadPlaces();
-            }
-          }
-        });
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 13,
+    center: center,
+    disableDefaultUI: true,
+    zoomControl: true,
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
+  });
 
-        // Add user marker
-        new google.maps.Marker({
-          position: userLocation,
-          map: map,
-          title: "You are here"
-        });
-      },
-      () => {
-        // Fallback to Lisbon if geolocation fails
-        const fallback = { lat: 38.7223, lng: -9.1393 };
-        map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 12,
-          center: fallback
-        });
-        currentCountryCode = 'PT';
-        updateUI();
-        loadPlaces();
-      }
-    );
-  }
+  loadPlaces(center);
+  updateUI();
 }
 
 function updateUI() {
-  const localTimeEl = document.getElementById('local-time');
-  const homeTimeEl = document.getElementById('home-time');
-  
   const now = new Date();
   const localTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const homeTime = new Date(now.toLocaleString("en-US", { timeZone: getTZ(homeCountryCode) }))
+  const homeTime = new Date(now.toLocaleString("en-US", { timeZone: tzMap[homeCountryCode] || 'UTC' }))
     .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
+
   const localFlag = countryFlags[currentCountryCode] || '📍';
   const homeFlag = countryFlags[homeCountryCode] || '🏠';
-  
-  localTimeEl.textContent = `${localFlag} ${localTime}`;
-  homeTimeEl.textContent = `${homeFlag} ${homeTime} • Tap to change`;
-  
-  homeTimeEl.onclick = () => chooseHomeCountry();
-}
 
-function getTZ(countryCode) {
-  const tzMap = {
-    US: 'America/New_York',
-    GB: 'Europe/London',
-    TH: 'Asia/Bangkok',
-    PT: 'Europe/Lisbon',
-    MX: 'America/Mexico_City',
-    DE: 'Europe/Berlin',
-    FR: 'Europe/Paris',
-    CA: 'America/Toronto',
-    AU: 'Australia/Sydney'
-  };
-  return tzMap[countryCode] || 'UTC';
+  document.getElementById('local-time').textContent = `${localFlag} ${localTime}`;
+  document.getElementById('home-time').textContent = `${homeFlag} ${homeTime}`;
+  document.getElementById('home-time').onclick = chooseHomeCountry;
 }
 
 function chooseHomeCountry() {
-  const countries = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'PT', 'MX', 'TH'];
-  let list = 'Choose home country:\n';
-  countries.forEach(code => {
-    list += `\n${countryFlags[code]} ${code}`;
-  });
-  const choice = prompt(list, homeCountryCode);
-  if (choice && countries.includes(choice.toUpperCase())) {
+  const choice = prompt('Enter home country code (e.g. US, GB, TH):', homeCountryCode);
+  if (choice && countryFlags[choice.toUpperCase()]) {
     homeCountryCode = choice.toUpperCase();
     localStorage.setItem('homeCountry', homeCountryCode);
     updateUI();
   }
 }
 
-function loadPlaces() {
-  if (!map || !currentCountryCode) return;
+function loadPlaces(center) {
+  clearMarkers();
 
-  const request = {
-    location: map.getCenter(),
-    radius: 5000,
-    type: ['hospital', 'pharmacy', 'grocery_or_supermarket', 'restaurant', 'electronics_store']
+  const typesMap = {
+    help: ['hospital', 'pharmacy', 'police'],
+    daily: ['grocery_or_supermarket', 'convenience_store', 'laundry'],
+    connect: ['electronics_store', 'mobile_phone_store'],
+    eat: ['restaurant', 'cafe'],
+    explore: ['park', 'museum', 'tourist_attraction']
   };
 
+  const allTypes = [...new Set(Object.values(typesMap).flat())];
   const service = new google.maps.places.PlacesService(map);
-  service.nearbySearch(request, (results, status) => {
-    if (status === google.maps.places.PlacesServiceStatus.OK) {
-      results.forEach(place => {
-        new google.maps.Marker({
-          position: place.geometry.location,
-          map: map,
-          title: place.name
+
+  allTypes.forEach(type => {
+    const request = { location: center, radius: 8000, type };
+    service.nearbySearch(request, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK) {
+        results.forEach(place => {
+          const marker = new google.maps.Marker({
+            position: place.geometry.location,
+            map: map,
+            title: place.name
+          });
+          markers.push(marker);
         });
-      });
-    }
+      }
+    });
   });
 }
 
-// Initialize when page loads
-window.onload = initMap;
+function clearMarkers() {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+}
 
-// Filter buttons (basic for now)
 document.querySelectorAll('.filter').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelector('.filter.active').classList.remove('active');
     btn.classList.add('active');
-    // Full filtering logic comes in next step
+    // Full filtering logic can be added later
   });
 });
+
+window.onload = initMap;
